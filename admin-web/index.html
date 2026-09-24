@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LankaJobs Admin Portal - Platform Control & Manual Payment Verification</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#0F52BA',
+              600: '#0A3A85',
+              700: '#072658',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .tab-active {
+      border-bottom: 3px solid #0F52BA;
+      color: #0F52BA;
+      font-weight: 700;
+    }
+    .dark .tab-active {
+      border-bottom: 3px solid #60A5FA;
+      color: #60A5FA;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-slate-100 font-sans min-h-screen flex flex-col transition-colors duration-200">
+
+  <!-- TOP APP BAR -->
+  <header class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16 items-center">
+        <!-- Logo & Branding -->
+        <div class="flex items-center space-x-3">
+          <div class="bg-brand-500 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+            <i class="fa-solid fa-briefcase text-lg"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h1 class="text-xl font-bold text-gray-900 dark:text-white leading-tight">LankaJobs</h1>
+              <span class="text-xs bg-brand-50 text-brand-600 dark:bg-blue-900/40 dark:text-blue-300 font-bold px-2 py-0.5 rounded border border-brand-100 dark:border-blue-800">Admin Control</span>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Payment Verification, Ad Approvals & Remote App Settings</p>
+          </div>
+        </div>
+
+        <!-- Right Side Controls -->
+        <div class="flex items-center space-x-3">
+          <!-- Connection Status -->
+          <div id="connectionStatus" class="flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="connectionText">Ready</span>
+          </div>
+
+          <!-- Dark/Light Theme Toggle -->
+          <button onclick="toggleTheme()" class="p-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition" title="Toggle Theme">
+            <i id="themeIcon" class="fa-solid fa-moon"></i>
+          </button>
+
+          <!-- Supabase Config Button -->
+          <button onclick="switchTab('supabaseTab')" class="text-xs bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 font-medium py-1.5 px-3 rounded-lg flex items-center space-x-1.5 border border-gray-200 dark:border-slate-600 transition">
+            <i class="fa-solid fa-cloud text-brand-500"></i>
+            <span class="hidden sm:inline">Supabase Config</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN NAVIGATION TABS -->
+      <nav class="flex space-x-6 -mb-px text-sm overflow-x-auto scrollbar-none">
+        <button onclick="switchTab('dashboardTab')" id="tabBtn-dashboardTab" class="tab-btn tab-active py-3 px-1 border-b-2 font-medium flex items-center space-x-2">
+          <i class="fa-solid fa-chart-line"></i>
+          <span>Dashboard</span>
+        </button>
+
+        <button onclick="switchTab('paymentsTab')" id="tabBtn-paymentsTab" class="tab-btn py-3 px-1 border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium flex items-center space-x-2">
+          <i class="fa-solid fa-file-invoice-dollar text-emerald-600"></i>
+          <span>Payments Verification <span id="pendingPaymentsBadge" class="ml-1 bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 text-xs px-1.5 py-0.5 rounded-full font-bold">0</span></span>
+        </button>
+
+        <button onclick="switchTab('adsTab')" id="tabBtn-adsTab" class="tab-btn py-3 px-1 border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium flex items-center space-x-2">
+          <i class="fa-solid fa-bullhorn text-indigo-600"></i>
+          <span>Advertisements <span id="pendingAdsBadge" class="ml-1 bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 text-xs px-1.5 py-0.5 rounded-full font-bold">0</span></span>
+        </button>
+
+        <button onclick="switchTab('jobsTab')" id="tabBtn-jobsTab" class="tab-btn py-3 px-1 border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium flex items-center space-x-2">
+          <i class="fa-solid fa-list-check text-blue-600"></i>
+          <span>Jobs</span>
+        </button>
+
+        <button onclick="switchTab('packagesTab')" id="tabBtn-packagesTab" class="tab-btn py-3 px-1 border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium flex items-center space-x-2">
+          <i class="fa-solid fa-tags text-green-600"></i>
+          <span>Packages & Pricing</span>
+        </button>
+
+        <button onclick="switchTab('paymentSettingsTab')" id="tabBtn-paymentSettingsTab" class="tab-btn py-3 px-1 border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium flex items-center space-x-2">
+          <i class="fa-solid fa-building-columns text-purple-600"></i>
+          <span>Bank & Instructions</span>
+        </button>
+
+        <button onclick="switchTab('appSettingsTab')" id="tabBtn-appSettingsTab" class="tab-btn py-3 px-1 border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium flex items-center space-x-2">
+          <i class="fa-solid fa-sliders text-amber-600"></i>
+          <span>App Settings & Maintenance</span>
+        </button>
+
+        <button onclick="switchTab('telegramTab')" id="tabBtn-telegramTab" class="tab-btn py-3 px-1 border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium flex items-center space-x-2">
+          <i class="fa-brands fa-telegram text-sky-500"></i>
+          <span>Telegram Alerts</span>
+        </button>
+
+        <button onclick="switchTab('auditLogsTab')" id="tabBtn-auditLogsTab" class="tab-btn py-3 px-1 border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium flex items-center space-x-2">
+          <i class="fa-solid fa-clock-rotate-left text-slate-500"></i>
+          <span>Audit Trail</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+
+    <!-- 1. DASHBOARD TAB -->
+    <section id="dashboardTab" class="tab-content space-y-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Card 1: Pending Payments -->
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
+          <div class="p-3.5 bg-amber-50 dark:bg-amber-950/50 text-amber-600 rounded-xl">
+            <i class="fa-solid fa-receipt text-2xl"></i>
+          </div>
+          <div>
+            <p class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Pending Payments</p>
+            <h3 id="statPendingPayments" class="text-2xl font-black text-gray-900 dark:text-white">0</h3>
+            <p class="text-xs text-amber-600 font-medium">Bank slips needing review</p>
+          </div>
+        </div>
+
+        <!-- Card 2: Pending Ads -->
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
+          <div class="p-3.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 rounded-xl">
+            <i class="fa-solid fa-bullhorn text-2xl"></i>
+          </div>
+          <div>
+            <p class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Ads Awaiting Approval</p>
+            <h3 id="statPendingAds" class="text-2xl font-black text-gray-900 dark:text-white">0</h3>
+            <p class="text-xs text-blue-600 font-medium">Verified payments awaiting go-live</p>
+          </div>
+        </div>
+
+        <!-- Card 3: Total Revenue -->
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
+          <div class="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 rounded-xl">
+            <i class="fa-solid fa-money-bill-wave text-2xl"></i>
+          </div>
+          <div>
+            <p class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Verified Revenue</p>
+            <h3 id="statRevenue" class="text-2xl font-black text-gray-900 dark:text-white">LKR 0</h3>
+            <p class="text-xs text-emerald-600 font-medium">Successfully verified deposits</p>
+          </div>
+        </div>
+
+        <!-- Card 4: Total Jobs -->
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex items-center space-x-4">
+          <div class="p-3.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 rounded-xl">
+            <i class="fa-solid fa-briefcase text-2xl"></i>
+          </div>
+          <div>
+            <p class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Active Job Listings</p>
+            <h3 id="statTotalJobs" class="text-2xl font-black text-gray-900 dark:text-white">0</h3>
+            <p class="text-xs text-indigo-600 font-medium">Synced with mobile app</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Cards & Live Status Overview -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left 2 Cols: Recent Submissions requiring verification -->
+        <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <h2 class="text-lg font-bold text-gray-900 dark:text-white">Recent Payment Verification Queue</h2>
+              <p class="text-xs text-gray-500 dark:text-slate-400">User transfers requiring admin confirmation</p>
+            </div>
+            <button onclick="switchTab('paymentsTab')" class="text-xs text-brand-600 dark:text-blue-400 font-semibold hover:underline">View All &rarr;</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-gray-50 dark:bg-slate-700/50 text-gray-500 dark:text-slate-300 text-xs uppercase">
+                <tr>
+                  <th class="py-2.5 px-3">Advertisement</th>
+                  <th class="py-2.5 px-3">Package</th>
+                  <th class="py-2.5 px-3">Reference</th>
+                  <th class="py-2.5 px-3">Amount</th>
+                  <th class="py-2.5 px-3">Status</th>
+                  <th class="py-2.5 px-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="dashboardQueueBody" class="divide-y divide-gray-100 dark:divide-slate-700">
+                <tr><td colspan="6" class="py-4 text-center text-gray-400">No pending verification items</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right Col: System Status & Maintenance -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white">Platform Control Status</h2>
+
+          <div class="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-lg space-y-3">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600 dark:text-slate-300">Maintenance Mode</span>
+              <span id="dashMaintenanceBadge" class="text-xs px-2 py-0.5 rounded font-bold bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300">OFF (Operational)</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600 dark:text-slate-300">Active Packages</span>
+              <span id="dashActivePackages" class="font-bold text-gray-900 dark:text-white">3 Packages</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600 dark:text-slate-300">Telegram Bot Notifications</span>
+              <span id="dashTelegramStatus" class="text-xs px-2 py-0.5 rounded font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">Configured</span>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button onclick="switchTab('paymentSettingsTab')" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-4 rounded-lg text-sm shadow transition flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-building-columns"></i>
+              <span>Update Bank Payment Details</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. PAYMENTS VERIFICATION TAB -->
+    <section id="paymentsTab" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Manual Payment Verifications</h2>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Review deposit slips and transaction numbers submitted by advertisers</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <select id="paymentStatusFilter" onchange="renderPaymentsTable()" class="bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-sm rounded-lg px-3 py-2 text-gray-900 dark:text-white">
+              <option value="ALL">All Statuses</option>
+              <option value="SUBMITTED" selected>Pending Verification (Pending)</option>
+              <option value="VERIFIED">Verified Only</option>
+              <option value="REJECTED">Rejected Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 dark:bg-slate-700/50 text-gray-500 dark:text-slate-300 text-xs uppercase">
+              <tr>
+                <th class="py-3 px-4">Advertisement & User</th>
+                <th class="py-3 px-4">Package & Amount</th>
+                <th class="py-3 px-4">Slip / Transaction Ref</th>
+                <th class="py-3 px-4">Transfer Date</th>
+                <th class="py-3 px-4">Deposit Slip Receipt</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="paymentsTableBody" class="divide-y divide-gray-100 dark:divide-slate-700">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. ADVERTISEMENTS APPROVAL TAB -->
+    <section id="adsTab" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Sponsored Advertisements Moderation</h2>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Review advertisement copy, graphics, contact info, and website URLs before publishing live</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <select id="adStatusFilter" onchange="renderAdsTable()" class="bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-sm rounded-lg px-3 py-2 text-gray-900 dark:text-white">
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING_APPROVAL" selected>Pending Approval Only</option>
+              <option value="PAYMENT_SUBMITTED">Payment Submitted</option>
+              <option value="APPROVED">Live / Approved Only</option>
+              <option value="REJECTED">Rejected Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 dark:bg-slate-700/50 text-gray-500 dark:text-slate-300 text-xs uppercase">
+              <tr>
+                <th class="py-3 px-4">Advertisement Details</th>
+                <th class="py-3 px-4">Package</th>
+                <th class="py-3 px-4">Target Location & Category</th>
+                <th class="py-3 px-4">Website URL</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4 text-right">Moderation Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adsTableBody" class="divide-y divide-gray-100 dark:divide-slate-700">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. JOBS TAB -->
+    <section id="jobsTab" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Manage Job Opportunities</h2>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Post and feature job vacancies on the LankaJobs platform</p>
+          </div>
+          <button onclick="openNewJobModal()" class="bg-brand-500 hover:bg-brand-600 text-white font-bold py-2 px-4 rounded-lg text-sm shadow transition flex items-center space-x-2">
+            <i class="fa-solid fa-plus"></i>
+            <span>Post New Job</span>
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 dark:bg-slate-700/50 text-gray-500 dark:text-slate-300 text-xs uppercase">
+              <tr>
+                <th class="py-3 px-4">Job Title & Company</th>
+                <th class="py-3 px-4">Category</th>
+                <th class="py-3 px-4">Location</th>
+                <th class="py-3 px-4">Salary (LKR)</th>
+                <th class="py-3 px-4">Featured</th>
+                <th class="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="jobsTableBody" class="divide-y divide-gray-100 dark:divide-slate-700">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. PACKAGES & PRICING TAB -->
+    <section id="packagesTab" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Advertisement Packages & Pricing Management</h2>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Modify package prices and durations without rebuilding the Android APK</p>
+          </div>
+          <button onclick="openNewPackageModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow transition flex items-center space-x-2">
+            <i class="fa-solid fa-plus"></i>
+            <span>Add New Package</span>
+          </button>
+        </div>
+
+        <div id="packagesContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. PAYMENT SETTINGS & BANK DETAILS TAB -->
+    <section id="paymentSettingsTab" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm max-w-3xl mx-auto">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Manual Bank Account & Payment Instructions</h2>
+        <p class="text-xs text-gray-500 dark:text-slate-400 mb-6">These instructions appear directly in the Android app when users choose to submit manual payment.</p>
+
+        <form id="paymentSettingsForm" onsubmit="savePaymentSettings(event)" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Bank Name *</label>
+              <input type="text" id="cfgBankName" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white" required>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Branch Name *</label>
+              <input type="text" id="cfgBranch" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white" required>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Branch Code</label>
+              <input type="text" id="cfgBranchCode" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Account Holder Name *</label>
+              <input type="text" id="cfgAccountHolder" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Account Number * (with Copy Button in App)</label>
+            <input type="text" id="cfgAccountNumber" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm font-mono font-bold dark:text-white" required>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Detailed Payment Instructions *</label>
+            <textarea id="cfgInstructions" rows="3" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white" required></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Verification Note / SLA</label>
+            <input type="text" id="cfgNote" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white">
+          </div>
+
+          <div class="pt-4">
+            <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow transition">
+              <i class="fa-solid fa-floppy-disk mr-1.5"></i> Save Payment Configuration
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- 7. APP SETTINGS & MAINTENANCE TAB -->
+    <section id="appSettingsTab" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm max-w-3xl mx-auto">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Application Remote Configuration</h2>
+        <p class="text-xs text-gray-500 dark:text-slate-400 mb-6">Controls remote feature flags and system availability across Android consumer devices.</p>
+
+        <form id="appSettingsForm" onsubmit="saveAppSettings(event)" class="space-y-5">
+          <div class="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between">
+            <div>
+              <p class="font-bold text-amber-900 dark:text-amber-200 text-sm">Maintenance Mode</p>
+              <p class="text-xs text-amber-700 dark:text-amber-400">When active, the Android app displays a maintenance gate. Admin web remains operational.</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="cfgMaintenanceMode" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Application Name</label>
+              <input type="text" id="cfgAppName" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Support Email</label>
+              <input type="email" id="cfgSupportEmail" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Support Phone</label>
+              <input type="text" id="cfgSupportPhone" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Homepage Announcement Banner (Optional)</label>
+              <input type="text" id="cfgAnnouncement" placeholder="e.g. Special Sinhala & Tamil New Year Offer" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Privacy Policy URL</label>
+              <input type="url" id="cfgPrivacyUrl" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Terms of Service URL</label>
+              <input type="url" id="cfgTermsUrl" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white">
+            </div>
+          </div>
+
+          <div class="pt-4">
+            <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow transition">
+              <i class="fa-solid fa-floppy-disk mr-1.5"></i> Save App Remote Settings
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- 8. TELEGRAM NOTIFICATIONS TAB -->
+    <section id="telegramTab" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm max-w-2xl mx-auto">
+        <div class="flex items-center space-x-3 mb-3">
+          <div class="p-3 bg-sky-50 dark:bg-sky-950/50 text-sky-500 rounded-xl">
+            <i class="fa-brands fa-telegram text-2xl"></i>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Telegram Admin Notification Channel</h2>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Receive instant alerts on your phone whenever a payment receipt is submitted</p>
+          </div>
+        </div>
+
+        <div class="p-4 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 rounded-lg text-xs text-sky-900 dark:text-sky-200 mb-6">
+          <p class="font-semibold mb-1">How it works:</p>
+          <p>When an advertiser submits a deposit slip, LankaJobs dispatches an alert formatted per specification directly to your Telegram chat. Tokens remain server-side and are not bundled in the Android APK.</p>
+        </div>
+
+        <form id="telegramForm" onsubmit="saveTelegramSettings(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Telegram Bot Token</label>
+            <input type="password" id="cfgTelegramToken" placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm font-mono dark:text-white">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Admin Telegram Chat ID / Channel ID</label>
+            <input type="text" id="cfgTelegramChatId" placeholder="e.g. 987654321 or -100123456789" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm font-mono dark:text-white">
+          </div>
+
+          <div class="flex items-center space-x-3 pt-4">
+            <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow transition">
+              <i class="fa-solid fa-floppy-disk mr-1.5"></i> Save Telegram Settings
+            </button>
+            <button type="button" onclick="testTelegramAlert()" class="bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 px-4 rounded-lg text-sm shadow transition flex items-center space-x-1.5">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Send Test Alert</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- 9. AUDIT TRAIL TAB -->
+    <section id="auditLogsTab" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">System & Moderation Audit Trail</h2>
+            <p class="text-xs text-gray-500 dark:text-slate-400">All payment verifications, ad approvals, and setting changes are audited</p>
+          </div>
+          <button onclick="clearAuditLogs()" class="text-xs text-gray-400 hover:text-red-600">Clear Logs</button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 dark:bg-slate-700/50 text-gray-500 dark:text-slate-300 text-xs uppercase">
+              <tr>
+                <th class="py-2.5 px-4">Timestamp</th>
+                <th class="py-2.5 px-4">Admin</th>
+                <th class="py-2.5 px-4">Action</th>
+                <th class="py-2.5 px-4">Entity</th>
+                <th class="py-2.5 px-4">Status Transition</th>
+                <th class="py-2.5 px-4">Reason / Notes</th>
+              </tr>
+            </thead>
+            <tbody id="auditLogsTableBody" class="divide-y divide-gray-100 dark:divide-slate-700">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. SUPABASE CONFIGURATION TAB -->
+    <section id="supabaseTab" class="tab-content hidden space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 shadow-sm max-w-2xl mx-auto">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Supabase Cloud Database Settings</h2>
+        <p class="text-xs text-gray-500 dark:text-slate-400 mb-6">Connect your live Supabase project to synchronize advertisement submissions, payments, and remote configuration.</p>
+
+        <form id="supabaseForm" onsubmit="saveSupabaseSettings(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Project URL *</label>
+            <input type="url" id="inputSupabaseUrl" placeholder="https://your-project.supabase.co" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white" required>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Anon / Service Key *</label>
+            <input type="password" id="inputSupabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsIn..." class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm font-mono dark:text-white" required>
+          </div>
+
+          <div class="flex items-center space-x-3 pt-4">
+            <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow transition">
+              <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> Save & Connect
+            </button>
+            <button type="button" onclick="testSupabaseSync()" class="bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-slate-200 font-bold py-2.5 px-4 rounded-lg text-sm transition">
+              <i class="fa-solid fa-arrows-rotate mr-1"></i> Sync Now
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODALS -->
+
+  <!-- Verification Confirmation Modal -->
+  <div id="verifyModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex items-center space-x-3 text-emerald-600">
+        <i class="fa-solid fa-circle-check text-2xl"></i>
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Verify This Payment?</h3>
+      </div>
+      <p class="text-sm text-gray-600 dark:text-slate-300">
+        You are confirming that the deposited amount has been validated in the bank statement.
+      </p>
+      <div class="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg text-xs space-y-1">
+        <p><strong class="text-gray-700 dark:text-slate-200">Payment ID:</strong> <span id="verifyModalPayId" class="font-mono"></span></p>
+        <p><strong class="text-gray-700 dark:text-slate-200">Reference:</strong> <span id="verifyModalRef"></span></p>
+        <p><strong class="text-gray-700 dark:text-slate-200">Amount:</strong> <span id="verifyModalAmount" class="font-bold text-emerald-600"></span></p>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-slate-400">
+        Next step: Payment transitions to <span class="font-bold text-emerald-600">VERIFIED</span> and the advertisement transitions to <span class="font-bold text-blue-600">PENDING_APPROVAL</span>.
+      </p>
+      <div class="flex justify-end space-x-3 pt-2">
+        <button onclick="closeVerifyModal()" class="px-4 py-2 bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-slate-200 text-sm font-semibold rounded-lg">Cancel</button>
+        <button onclick="confirmVerifyPayment()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg shadow">Confirm Verification</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rejection Modal -->
+  <div id="rejectModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex items-center space-x-3 text-red-600">
+        <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="rejectModalTitle">Reject Payment</h3>
+      </div>
+      <p class="text-sm text-gray-600 dark:text-slate-300">
+        Please specify a clear reason. The user will be notified of this reason in the LankaJobs Android application.
+      </p>
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Reason for Rejection *</label>
+        <textarea id="rejectReasonInput" rows="3" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:text-white" placeholder="e.g. Deposit amount does not match package price or slip image is unreadable." required></textarea>
+      </div>
+      <div class="flex justify-end space-x-3 pt-2">
+        <button onclick="closeRejectModal()" class="px-4 py-2 bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-slate-200 text-sm font-semibold rounded-lg">Cancel</button>
+        <button onclick="confirmRejectAction()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg shadow">Submit Rejection</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Viewer Modal -->
+  <div id="receiptViewerModal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-4 max-w-2xl w-full shadow-2xl space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="text-md font-bold text-gray-900 dark:text-white">Deposit Slip Inspection</h3>
+        <button onclick="closeReceiptViewer()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="max-h-[75vh] overflow-auto flex items-center justify-center bg-black/5 dark:bg-black/30 rounded-lg p-2">
+        <img id="receiptModalImage" src="" alt="Payment Slip Receipt" class="max-h-[70vh] object-contain rounded">
+      </div>
+      <div class="flex justify-between items-center text-xs text-gray-500 dark:text-slate-400 pt-1">
+        <span id="receiptModalRefText"></span>
+        <button onclick="closeReceiptViewer()" class="px-4 py-1.5 bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-slate-200 rounded font-semibold">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Package Create/Edit Modal -->
+  <div id="packageModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="pkgModalTitle">Advertisement Package</h3>
+        <button onclick="closePackageModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="pkgForm" onsubmit="savePackageModal(event)" class="space-y-3">
+        <input type="hidden" id="pkgModalId">
+        <div>
+          <label class="block text-xs font-semibold mb-1">Package Name *</label>
+          <input type="text" id="pkgModalName" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white" required>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold mb-1">Price (LKR) *</label>
+            <input type="number" id="pkgModalPrice" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white" required>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Duration (Days) *</label>
+            <input type="number" id="pkgModalDuration" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white" required>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Features (one per line)</label>
+          <textarea id="pkgModalFeatures" rows="3" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white"></textarea>
+        </div>
+        <div class="flex items-center space-x-4">
+          <label class="flex items-center space-x-2 text-xs">
+            <input type="checkbox" id="pkgModalPopular" class="rounded text-brand-500">
+            <span>Mark as Popular</span>
+          </label>
+          <label class="flex items-center space-x-2 text-xs">
+            <input type="checkbox" id="pkgModalActive" checked class="rounded text-brand-500">
+            <span>Active Package</span>
+          </label>
+        </div>
+        <div class="flex justify-end space-x-3 pt-3">
+          <button type="button" onclick="closePackageModal()" class="px-4 py-2 bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-slate-200 text-sm font-semibold rounded-lg">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-bold rounded-lg shadow">Save Package</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Job Modal -->
+  <div id="newJobModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Post New Job Vacancy</h3>
+        <button onclick="closeNewJobModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleCreateJob(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold mb-1">Job Title *</label>
+          <input type="text" id="jobTitle" placeholder="e.g. Senior Software Engineer" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white" required>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold mb-1">Company Name *</label>
+            <input type="text" id="jobCompany" placeholder="e.g. Dialog Axiata PLC" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white" required>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Category *</label>
+            <select id="jobCategory" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white">
+              <option value="IT & Software">IT & Software</option>
+              <option value="Accounting & Finance">Accounting & Finance</option>
+              <option value="Sales & Marketing">Sales & Marketing</option>
+              <option value="Engineering">Engineering</option>
+              <option value="Education & Teaching">Education & Teaching</option>
+              <option value="Healthcare & Medical">Healthcare & Medical</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold mb-1">Location *</label>
+            <input type="text" id="jobLocation" value="Colombo" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white" required>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Employment Type</label>
+            <select id="jobEmpType" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white">
+              <option value="FULL_TIME">Full-time</option>
+              <option value="PART_TIME">Part-time</option>
+              <option value="CONTRACT">Contract</option>
+              <option value="INTERNSHIP">Internship</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold mb-1">Salary Min (LKR)</label>
+            <input type="number" id="jobSalaryMin" value="120000" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Salary Max (LKR)</label>
+            <input type="number" id="jobSalaryMax" value="250000" class="w-full bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white">
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <input type="checkbox" id="jobFeatured" class="rounded text-brand-500">
+          <label for="jobFeatured" class="text-xs">Feature this job on the home feed</label>
+        </div>
+        <div class="flex justify-end space-x-3 pt-3">
+          <button type="button" onclick="closeNewJobModal()" class="px-4 py-2 bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-slate-200 text-sm font-semibold rounded-lg">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-bold rounded-lg shadow">Publish Job</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- APPLICATION JAVASCRIPT LOGIC -->
+  <script>
+    let supabaseClient = null;
+
+    // Default In-Memory / Local Storage Datastores
+    let defaultPackages = [
+      { id: 'pkg_basic', name: 'Starter Listing', priceLkr: 2500, durationDays: 14, features: ['Standard placement on Home feed', 'Visible for 14 days', 'Contact phone & email display', 'Verified advertiser badge'], isPopular: false, isActive: true, sortOrder: 1 },
+      { id: 'pkg_standard', name: 'Professional Banner', priceLkr: 6000, durationDays: 30, features: ['Prominent banner in search and category feeds', 'Visible for 30 days', 'Official website URL link button', 'High-priority Admin verification', 'Social & newsletter highlight'], isPopular: true, isActive: true, sortOrder: 2 },
+      { id: 'pkg_premium', name: 'Featured Enterprise', priceLkr: 12500, durationDays: 45, features: ['Top pinned placement on Home & search results', 'Visible for 45 days', 'Official website & phone direct connection', 'Priority employer badge', 'Targeted push announcement', 'Weekly reach analytics'], isPopular: false, isActive: true, sortOrder: 3 }
+    ];
+
+    let defaultJobs = [
+      { id: 'job_01', title: 'Senior Software Engineer (Kotlin / Android)', companyName: 'CodeGen International', categoryName: 'IT & Software', location: 'Trace Expert City, Colombo', salaryMin: 250000, salaryMax: 450000, isFeatured: true, employmentType: 'FULL_TIME' },
+      { id: 'job_02', title: 'Financial Analyst - Corporate Accounts', companyName: 'John Keells Holdings', categoryName: 'Accounting & Finance', location: 'Colombo 02', salaryMin: 180000, salaryMax: 280000, isFeatured: true, employmentType: 'FULL_TIME' },
+      { id: 'job_03', title: 'Digital Marketing & Growth Specialist', companyName: 'Daraz Sri Lanka', categoryName: 'Sales & Marketing', location: 'Colombo', salaryMin: 140000, salaryMax: 220000, isFeatured: false, employmentType: 'FULL_TIME' }
+    ];
+
+    let defaultAds = [
+      {
+        id: 'ad_demo_01',
+        title: 'Diploma in Cloud Computing & DevOps (Intake 2026)',
+        organizationName: 'Colombo Tech Academy',
+        description: 'Hands-on Cloud DevOps engineering certification with weekend batches and industry mentors.',
+        category: 'IT & Software',
+        location: 'Colombo',
+        contactPhone: '+94 11 234 5678',
+        contactEmail: 'admissions@colombotech.lk',
+        websiteUrl: 'https://example.com/devops',
+        packageId: 'pkg_standard',
+        packageName: 'Professional Banner',
+        status: 'PENDING_APPROVAL',
+        paymentMethod: 'Bank Deposit / Slip',
+        paymentReference: 'SLIP-778901',
+        amountPaidLkr: 6000,
+        createdAt: Date.now() - 3600000 * 2,
+        userId: 'usr_demo_1'
+      }
+    ];
+
+    let defaultPayments = [
+      {
+        id: 'pay_demo_01',
+        advertisementId: 'ad_demo_01',
+        userId: 'usr_demo_1',
+        userName: 'Saman Jayasinghe',
+        packageId: 'pkg_standard',
+        packageName: 'Professional Banner',
+        amountLkr: 6000,
+        paymentMethod: 'Bank Deposit / Slip',
+        paymentReference: 'SLIP-778901',
+        paymentDate: '24 Sep 2026',
+        receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600',
+        status: 'SUBMITTED',
+        rejectionReason: null,
+        submittedAt: Date.now() - 3600000 * 2
+      }
+    ];
+
+    let defaultPaymentSettings = {
+      bankName: 'Bank of Ceylon / Commercial Bank',
+      branch: 'Corporate Branch, Colombo 01',
+      branchCode: '001',
+      accountHolderName: 'LankaJobs (Pvt) Ltd',
+      accountNumber: '8012345678',
+      paymentInstructions: 'Transfer the exact package amount via online banking or physical deposit slip. Upload your payment receipt and enter the transaction reference.',
+      paymentNote: 'Verification takes between 15-60 minutes during standard business hours.',
+      qrCodeUrl: ''
+    };
+
+    let defaultAppSettings = {
+      appName: 'LankaJobs',
+      supportEmail: 'support@lankajobs.lk',
+      supportPhone: '+94 11 234 5678',
+      announcementBanner: '',
+      maintenanceMode: false,
+      privacyUrl: 'https://lankajobs.lk/privacy',
+      termsUrl: 'https://lankajobs.lk/terms',
+      telegramBotToken: '',
+      telegramChatId: ''
+    };
+
+    // State Variables
+    let packages = JSON.parse(localStorage.getItem('admin_packages')) || defaultPackages;
+    let jobs = JSON.parse(localStorage.getItem('admin_jobs')) || defaultJobs;
+    let advertisements = JSON.parse(localStorage.getItem('admin_ads')) || defaultAds;
+    let payments = JSON.parse(localStorage.getItem('admin_payments')) || defaultPayments;
+    let paymentSettings = JSON.parse(localStorage.getItem('admin_pay_settings')) || defaultPaymentSettings;
+    let appSettings = JSON.parse(localStorage.getItem('admin_app_settings')) || defaultAppSettings;
+    let auditLogs = JSON.parse(localStorage.getItem('admin_audit_logs')) || [
+      { timestamp: new Date().toISOString(), admin: 'admin@lankajobs.lk', action: 'SYSTEM_BOOT', entity: 'system', entityId: 'sys_0', oldStatus: '-', newStatus: 'ONLINE', reason: 'Admin dashboard initialized' }
+    ];
+
+    let activeModalPayId = null;
+    let activeRejectEntity = null; // { type: 'payment'|'ad', id: string }
+
+    // --- Initialization ---
+    function init() {
+      initTheme();
+      initSupabase();
+      renderAll();
+      loadFormSettings();
+    }
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem('admin_theme') || 'light';
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.getElementById('themeIcon').className = 'fa-solid fa-sun';
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('themeIcon').className = 'fa-solid fa-moon';
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('admin_theme', isDark ? 'dark' : 'light');
+      document.getElementById('themeIcon').className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    }
+
+    function initSupabase() {
+      const url = localStorage.getItem('supabase_url') || '';
+      const key = localStorage.getItem('supabase_key') || '';
+      if (url && key && window.supabase) {
+        try {
+          supabaseClient = window.supabase.createClient(url, key);
+          document.getElementById('connectionStatus').className = 'flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800';
+          document.getElementById('connectionText').innerText = 'Connected to Supabase Cloud';
+          syncFromSupabase();
+        } catch (e) {
+          console.error("Supabase init error", e);
+        }
+      }
+    }
+
+    async function syncFromSupabase() {
+      if (!supabaseClient) return;
+      try {
+        const { data: pkgData } = await supabaseClient.from('ad_packages').select('*');
+        if (pkgData && pkgData.length > 0) {
+          packages = pkgData.map(p => ({
+            id: p.id,
+            name: p.name,
+            priceLkr: p.price_lkr,
+            durationDays: p.duration_days,
+            features: Array.isArray(p.features) ? p.features : JSON.parse(p.features || '[]'),
+            isPopular: p.is_popular,
+            isActive: p.is_active !== false,
+            sortOrder: p.sort_order || 0
+          }));
+          localStorage.setItem('admin_packages', JSON.stringify(packages));
+        }
+
+        const { data: adsData } = await supabaseClient.from('advertisements').select('*').order('created_at', { ascending: false });
+        if (adsData && adsData.length > 0) {
+          advertisements = adsData;
+          localStorage.setItem('admin_ads', JSON.stringify(advertisements));
+        }
+
+        const { data: payData } = await supabaseClient.from('payments').select('*').order('submitted_at', { ascending: false });
+        if (payData && payData.length > 0) {
+          payments = payData;
+          localStorage.setItem('admin_payments', JSON.stringify(payments));
+        }
+
+        renderAll();
+      } catch (err) {
+        console.warn("Supabase background sync:", err);
+      }
+    }
+
+    function renderAll() {
+      renderStats();
+      renderPaymentsTable();
+      renderAdsTable();
+      renderJobsTable();
+      renderPackages();
+      renderAuditLogs();
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
+      const content = document.getElementById(tabId);
+      if (content) content.classList.remove('hidden');
+      const btn = document.getElementById(`tabBtn-${tabId}`);
+      if (btn) btn.classList.add('tab-active');
+    }
+
+    function addAuditLog(action, entity, entityId, oldStatus, newStatus, reason) {
+      const log = {
+        timestamp: new Date().toISOString(),
+        admin: 'admin@lankajobs.lk',
+        action,
+        entity,
+        entityId,
+        oldStatus,
+        newStatus,
+        reason: reason || '-'
+      };
+      auditLogs.unshift(log);
+      localStorage.setItem('admin_audit_logs', JSON.stringify(auditLogs));
+      renderAuditLogs();
+
+      if (supabaseClient) {
+        supabaseClient.from('audit_logs').insert([{
+          admin_email: log.admin,
+          action: log.action,
+          entity: log.entity,
+          entity_id: log.entityId,
+          old_status: log.oldStatus,
+          new_status: log.newStatus,
+          reason: log.reason
+        }]).then(() => {});
+      }
+    }
+
+    // --- Payments Verification Management ---
+    function renderPaymentsTable() {
+      const filter = document.getElementById('paymentStatusFilter').value;
+      const tbody = document.getElementById('paymentsTableBody');
+      const dashTbody = document.getElementById('dashboardQueueBody');
+      tbody.innerHTML = '';
+      if (dashTbody) dashTbody.innerHTML = '';
+
+      const filtered = payments.filter(p => filter === 'ALL' || p.status === filter);
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-400">No payment records match filter</td></tr>`;
+      }
+
+      filtered.forEach(p => {
+        const ad = advertisements.find(a => a.id === p.advertisementId) || { title: 'LankaJobs Ad', organizationName: 'Advertiser' };
+        const statusBadge = p.status === 'VERIFIED'
+          ? '<span class="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs px-2.5 py-0.5 rounded-full font-bold">VERIFIED</span>'
+          : p.status === 'REJECTED'
+          ? '<span class="bg-red-100 dark:bg-red-900/60 text-red-800 dark:text-red-200 text-xs px-2.5 py-0.5 rounded-full font-bold">REJECTED</span>'
+          : '<span class="bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-xs px-2.5 py-0.5 rounded-full font-bold animate-pulse">PENDING VERIFICATION</span>';
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50 dark:hover:bg-slate-750 border-b border-gray-100 dark:border-slate-700';
+        tr.innerHTML = `
+          <td class="py-3 px-4">
+            <p class="font-bold text-gray-900 dark:text-white">${ad.title}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">${ad.organizationName} • ID: ${p.id}</p>
+          </td>
+          <td class="py-3 px-4">
+            <p class="font-semibold text-brand-600 dark:text-blue-400 text-xs">${p.packageName}</p>
+            <p class="font-bold text-gray-900 dark:text-white">LKR ${(p.amountLkr || 0).toLocaleString()}</p>
+          </td>
+          <td class="py-3 px-4">
+            <span class="font-mono text-xs bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded text-gray-800 dark:text-slate-200">${p.paymentReference}</span>
+          </td>
+          <td class="py-3 px-4 text-xs text-gray-600 dark:text-slate-300">${p.paymentDate}</td>
+          <td class="py-3 px-4">
+            ${p.receiptUrl ? `
+              <button onclick="openReceiptViewer('${p.receiptUrl}', '${p.paymentReference}')" class="flex items-center space-x-1.5 text-xs text-brand-600 dark:text-blue-400 hover:underline">
+                <i class="fa-solid fa-receipt"></i>
+                <span>View Slip</span>
+              </button>
+            ` : '<span class="text-xs text-gray-400">No Slip</span>'}
+          </td>
+          <td class="py-3 px-4">${statusBadge}</td>
+          <td class="py-3 px-4 text-right space-x-2">
+            ${p.status === 'SUBMITTED' ? `
+              <button onclick="openVerifyModal('${p.id}', '${p.paymentReference}', ${p.amountLkr})" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg shadow">
+                <i class="fa-solid fa-check mr-1"></i> Verify
+              </button>
+              <button onclick="openRejectModal('payment', '${p.id}')" class="text-xs bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg shadow">
+                <i class="fa-solid fa-xmark mr-1"></i> Reject
+              </button>
+            ` : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        // Populate Dashboard top queue
+        if (dashTbody && p.status === 'SUBMITTED') {
+          const dtr = document.createElement('tr');
+          dtr.className = 'border-b border-gray-100 dark:border-slate-700';
+          dtr.innerHTML = `
+            <td class="py-2 px-3 font-semibold text-xs text-gray-900 dark:text-white">${ad.title.substring(0, 32)}...</td>
+            <td class="py-2 px-3 text-xs text-brand-600">${p.packageName}</td>
+            <td class="py-2 px-3 font-mono text-xs">${p.paymentReference}</td>
+            <td class="py-2 px-3 font-bold text-xs">LKR ${(p.amountLkr || 0).toLocaleString()}</td>
+            <td class="py-2 px-3"><span class="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded font-bold">PENDING</span></td>
+            <td class="py-2 px-3 text-right">
+              <button onclick="openVerifyModal('${p.id}', '${p.paymentReference}', ${p.amountLkr})" class="text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded">Verify</button>
+            </td>
+          `;
+          dashTbody.appendChild(dtr);
+        }
+      });
+
+      renderStats();
+    }
+
+    // Verify Payment Flow
+    function openVerifyModal(payId, ref, amount) {
+      activeModalPayId = payId;
+      document.getElementById('verifyModalPayId').innerText = payId;
+      document.getElementById('verifyModalRef').innerText = ref;
+      document.getElementById('verifyModalAmount').innerText = `LKR ${amount.toLocaleString()}`;
+      document.getElementById('verifyModal').classList.remove('hidden');
+    }
+
+    function closeVerifyModal() {
+      document.getElementById('verifyModal').classList.add('hidden');
+      activeModalPayId = null;
+    }
+
+    function confirmVerifyPayment() {
+      if (!activeModalPayId) return;
+      const payment = payments.find(p => p.id === activeModalPayId);
+      if (payment) {
+        payment.status = 'VERIFIED';
+        payment.verifiedAt = new Date().toISOString();
+        payment.verifiedBy = 'admin@lankajobs.lk';
+
+        // Update corresponding ad to PENDING_APPROVAL
+        const ad = advertisements.find(a => a.id === payment.advertisementId);
+        if (ad) {
+          ad.status = 'PENDING_APPROVAL';
+          if (supabaseClient) {
+            supabaseClient.from('advertisements').update({ status: 'PENDING_APPROVAL' }).eq('id', ad.id).then(() => {});
+          }
+        }
+
+        if (supabaseClient) {
+          supabaseClient.from('payments').update({ status: 'VERIFIED', verified_at: payment.verifiedAt, verified_by: payment.verifiedBy }).eq('id', payment.id).then(() => {});
+        }
+
+        localStorage.setItem('admin_payments', JSON.stringify(payments));
+        localStorage.setItem('admin_ads', JSON.stringify(advertisements));
+
+        addAuditLog('PAYMENT_VERIFIED', 'payment', payment.id, 'SUBMITTED', 'VERIFIED', `Slip ref ${payment.paymentReference} confirmed`);
+        alert(`Payment ${payment.id} verified successfully! Advertisement is now ready for editorial approval.`);
+      }
+
+      closeVerifyModal();
+      renderAll();
+    }
+
+    // Rejection Flow
+    function openRejectModal(type, id) {
+      activeRejectEntity = { type, id };
+      document.getElementById('rejectModalTitle').innerText = type === 'payment' ? 'Reject Payment Verification' : 'Reject Advertisement';
+      document.getElementById('rejectReasonInput').value = '';
+      document.getElementById('rejectModal').classList.remove('hidden');
+    }
+
+    function closeRejectModal() {
+      document.getElementById('rejectModal').classList.add('hidden');
+      activeRejectEntity = null;
+    }
+
+    function confirmRejectAction() {
+      const reason = document.getElementById('rejectReasonInput').value.trim();
+      if (!reason) {
+        alert("A rejection reason is mandatory.");
+        return;
+      }
+
+      if (activeRejectEntity.type === 'payment') {
+        const payment = payments.find(p => p.id === activeRejectEntity.id);
+        if (payment) {
+          const oldStatus = payment.status;
+          payment.status = 'REJECTED';
+          payment.rejectionReason = reason;
+
+          const ad = advertisements.find(a => a.id === payment.advertisementId);
+          if (ad) {
+            ad.status = 'REJECTED';
+            ad.rejectionReason = `Payment Rejected: ${reason}`;
+            if (supabaseClient) {
+              supabaseClient.from('advertisements').update({ status: 'REJECTED', rejection_reason: ad.rejectionReason }).eq('id', ad.id).then(() => {});
+            }
+          }
+
+          if (supabaseClient) {
+            supabaseClient.from('payments').update({ status: 'REJECTED', rejection_reason: reason }).eq('id', payment.id).then(() => {});
+          }
+
+          localStorage.setItem('admin_payments', JSON.stringify(payments));
+          localStorage.setItem('admin_ads', JSON.stringify(advertisements));
+          addAuditLog('PAYMENT_REJECTED', 'payment', payment.id, oldStatus, 'REJECTED', reason);
+        }
+      } else if (activeRejectEntity.type === 'ad') {
+        const ad = advertisements.find(a => a.id === activeRejectEntity.id);
+        if (ad) {
+          const oldStatus = ad.status;
+          ad.status = 'REJECTED';
+          ad.rejectionReason = reason;
+
+          if (supabaseClient) {
+            supabaseClient.from('advertisements').update({ status: 'REJECTED', rejection_reason: reason }).eq('id', ad.id).then(() => {});
+          }
+
+          localStorage.setItem('admin_ads', JSON.stringify(advertisements));
+          addAuditLog('AD_REJECTED', 'advertisement', ad.id, oldStatus, 'REJECTED', reason);
+        }
+      }
+
+      closeRejectModal();
+      renderAll();
+      alert("Rejection recorded and updated in database.");
+    }
+
+    // Slip Receipt Viewer
+    function openReceiptViewer(url, ref) {
+      document.getElementById('receiptModalImage').src = url;
+      document.getElementById('receiptModalRefText').innerText = `Payment Reference: ${ref}`;
+      document.getElementById('receiptViewerModal').classList.remove('hidden');
+    }
+
+    function closeReceiptViewer() {
+      document.getElementById('receiptViewerModal').classList.add('hidden');
+    }
+
+    // --- Advertisements Moderation ---
+    function renderAdsTable() {
+      const filter = document.getElementById('adStatusFilter').value;
+      const tbody = document.getElementById('adsTableBody');
+      tbody.innerHTML = '';
+
+      const filtered = advertisements.filter(a => filter === 'ALL' || a.status === filter);
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-400">No advertisements found</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(ad => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50 dark:hover:bg-slate-750 border-b border-gray-100 dark:border-slate-700';
+        const statusBadge = ad.status === 'APPROVED'
+          ? '<span class="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs px-2.5 py-0.5 rounded-full font-bold">APPROVED / LIVE</span>'
+          : ad.status === 'REJECTED'
+          ? '<span class="bg-red-100 dark:bg-red-900/60 text-red-800 dark:text-red-200 text-xs px-2.5 py-0.5 rounded-full font-bold">REJECTED</span>'
+          : ad.status === 'PENDING_APPROVAL'
+          ? '<span class="bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 text-xs px-2.5 py-0.5 rounded-full font-bold">PENDING APPROVAL</span>'
+          : '<span class="bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-xs px-2.5 py-0.5 rounded-full font-bold">PAYMENT SUBMITTED</span>';
+
+        tr.innerHTML = `
+          <td class="py-3 px-4">
+            <p class="font-bold text-gray-900 dark:text-white">${ad.title}</p>
+            <p class="text-xs text-brand-600 dark:text-blue-400 font-semibold">${ad.organizationName}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">${ad.description ? ad.description.substring(0, 70) + '...' : ''}</p>
+          </td>
+          <td class="py-3 px-4">
+            <span class="text-xs font-semibold text-gray-800 dark:text-slate-200">${ad.packageName}</span>
+            <p class="text-xs font-bold text-gray-900 dark:text-white">LKR ${(ad.amountPaidLkr || 0).toLocaleString()}</p>
+          </td>
+          <td class="py-3 px-4 text-xs text-gray-600 dark:text-slate-300">
+            ${ad.location} • ${ad.category}
+          </td>
+          <td class="py-3 px-4 text-xs">
+            ${ad.websiteUrl ? `<a href="${ad.websiteUrl}" target="_blank" class="text-brand-600 dark:text-blue-400 hover:underline flex items-center space-x-1"><i class="fa-solid fa-arrow-up-right-from-square"></i><span>Official Website</span></a>` : '<span class="text-gray-400">None</span>'}
+          </td>
+          <td class="py-3 px-4">${statusBadge}</td>
+          <td class="py-3 px-4 text-right space-x-1.5">
+            ${ad.status !== 'APPROVED' ? `
+              <button onclick="approveAd('${ad.id}')" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-lg shadow">
+                <i class="fa-solid fa-check mr-1"></i> Approve Live
+              </button>
+            ` : ''}
+            ${ad.status !== 'REJECTED' ? `
+              <button onclick="openRejectModal('ad', '${ad.id}')" class="text-xs bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1.5 rounded-lg shadow">
+                <i class="fa-solid fa-xmark mr-1"></i> Reject
+              </button>
+            ` : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function approveAd(adId) {
+      const ad = advertisements.find(a => a.id === adId);
+      if (ad) {
+        const oldStatus = ad.status;
+        ad.status = 'APPROVED';
+        ad.validUntil = Date.now() + (30 * 86400000);
+
+        if (supabaseClient) {
+          supabaseClient.from('advertisements').update({ status: 'APPROVED', valid_until: ad.validUntil }).eq('id', adId).then(() => {});
+        }
+
+        localStorage.setItem('admin_ads', JSON.stringify(advertisements));
+        addAuditLog('AD_APPROVED', 'advertisement', ad.id, oldStatus, 'APPROVED', 'Published to live mobile feed');
+        renderAll();
+        alert(`Advertisement "${ad.title}" is now APPROVED and LIVE on the LankaJobs mobile application!`);
+      }
+    }
+
+    // --- Packages Management ---
+    function renderPackages() {
+      const container = document.getElementById('packagesContainer');
+      container.innerHTML = '';
+
+      packages.forEach(pkg => {
+        const card = document.createElement('div');
+        card.className = `p-6 rounded-xl border ${pkg.isPopular ? 'border-brand-500 shadow-md bg-brand-50/20 dark:bg-slate-800' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'} relative flex flex-col justify-between`;
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">${pkg.name}</h3>
+                <p class="text-xs text-gray-500 dark:text-slate-400">${pkg.durationDays} Days Active Duration</p>
+              </div>
+              ${pkg.isPopular ? '<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">POPULAR</span>' : ''}
+            </div>
+            <div class="my-3">
+              <span class="text-2xl font-black text-brand-600 dark:text-blue-400">LKR ${pkg.priceLkr.toLocaleString()}</span>
+            </div>
+            <ul class="text-xs space-y-2 text-gray-600 dark:text-slate-300 my-4 divide-y divide-gray-100 dark:divide-slate-700">
+              ${(pkg.features || []).map(f => `<li class="pt-1.5 flex items-center space-x-1.5"><i class="fa-solid fa-check text-emerald-500"></i><span>${f}</span></li>`).join('')}
+            </ul>
+          </div>
+          <div class="pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center">
+            <button onclick="editPackage('${pkg.id}')" class="text-xs font-semibold text-brand-600 dark:text-blue-400 hover:underline">
+              <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Price/Duration
+            </button>
+            <button onclick="deletePackage('${pkg.id}')" class="text-xs text-gray-400 hover:text-red-600">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      document.getElementById('dashActivePackages').innerText = `${packages.filter(p => p.isActive).length} Packages`;
+    }
+
+    function openNewPackageModal() {
+      document.getElementById('pkgModalTitle').innerText = 'Create Advertisement Package';
+      document.getElementById('pkgModalId').value = '';
+      document.getElementById('pkgModalName').value = '';
+      document.getElementById('pkgModalPrice').value = '5000';
+      document.getElementById('pkgModalDuration').value = '30';
+      document.getElementById('pkgModalFeatures').value = 'Standard placement on Home feed\nVisible for 30 days\nContact phone & email display';
+      document.getElementById('pkgModalPopular').checked = false;
+      document.getElementById('pkgModalActive').checked = true;
+      document.getElementById('packageModal').classList.remove('hidden');
+    }
+
+    function editPackage(id) {
+      const pkg = packages.find(p => p.id === id);
+      if (!pkg) return;
+      document.getElementById('pkgModalTitle').innerText = 'Edit Package';
+      document.getElementById('pkgModalId').value = pkg.id;
+      document.getElementById('pkgModalName').value = pkg.name;
+      document.getElementById('pkgModalPrice').value = pkg.priceLkr;
+      document.getElementById('pkgModalDuration').value = pkg.durationDays;
+      document.getElementById('pkgModalFeatures').value = (pkg.features || []).join('\n');
+      document.getElementById('pkgModalPopular').checked = !!pkg.isPopular;
+      document.getElementById('pkgModalActive').checked = pkg.isActive !== false;
+      document.getElementById('packageModal').classList.remove('hidden');
+    }
+
+    function closePackageModal() {
+      document.getElementById('packageModal').classList.add('hidden');
+    }
+
+    function savePackageModal(e) {
+      e.preventDefault();
+      const id = document.getElementById('pkgModalId').value || `pkg_${Math.random().toString(36).substring(2, 8)}`;
+      const name = document.getElementById('pkgModalName').value;
+      const priceLkr = parseInt(document.getElementById('pkgModalPrice').value) || 3000;
+      const durationDays = parseInt(document.getElementById('pkgModalDuration').value) || 30;
+      const features = document.getElementById('pkgModalFeatures').value.split('\n').map(s => s.trim()).filter(Boolean);
+      const isPopular = document.getElementById('pkgModalPopular').checked;
+      const isActive = document.getElementById('pkgModalActive').checked;
+
+      const existingIndex = packages.findIndex(p => p.id === id);
+      const pkgObj = { id, name, priceLkr, durationDays, features, isPopular, isActive, sortOrder: existingIndex >= 0 ? packages[existingIndex].sortOrder : packages.length + 1 };
+
+      if (existingIndex >= 0) {
+        packages[existingIndex] = pkgObj;
+        addAuditLog('PACKAGE_UPDATED', 'package', id, '-', `LKR ${priceLkr}`, `Updated package ${name}`);
+      } else {
+        packages.push(pkgObj);
+        addAuditLog('PACKAGE_CREATED', 'package', id, '-', `LKR ${priceLkr}`, `Created new package ${name}`);
+      }
+
+      localStorage.setItem('admin_packages', JSON.stringify(packages));
+
+      if (supabaseClient) {
+        supabaseClient.from('ad_packages').upsert({
+          id,
+          name,
+          price_lkr: priceLkr,
+          duration_days: durationDays,
+          features,
+          is_popular: isPopular,
+          is_active: isActive
+        }).then(() => {});
+      }
+
+      closePackageModal();
+      renderPackages();
+      alert(`Package "${name}" saved! Mobile clients will dynamically pull these updated prices.`);
+    }
+
+    function deletePackage(id) {
+      if (confirm("Are you sure you want to disable/delete this package?")) {
+        packages = packages.filter(p => p.id !== id);
+        localStorage.setItem('admin_packages', JSON.stringify(packages));
+        addAuditLog('PACKAGE_DELETED', 'package', id, 'ACTIVE', 'DELETED', 'Disabled package');
+        renderPackages();
+      }
+    }
+
+    // --- Job Listings ---
+    function renderJobsTable() {
+      const tbody = document.getElementById('jobsTableBody');
+      tbody.innerHTML = '';
+
+      jobs.forEach(job => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50 dark:hover:bg-slate-750 border-b border-gray-100 dark:border-slate-700';
+        tr.innerHTML = `
+          <td class="py-3 px-4">
+            <p class="font-bold text-gray-900 dark:text-white">${job.title}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">${job.companyName}</p>
+          </td>
+          <td class="py-3 px-4 text-xs text-gray-600 dark:text-slate-300">${job.categoryName}</td>
+          <td class="py-3 px-4 text-xs text-gray-600 dark:text-slate-300">${job.location}</td>
+          <td class="py-3 px-4 text-xs font-semibold text-gray-900 dark:text-white">LKR ${(job.salaryMin || 0).toLocaleString()} - ${(job.salaryMax || 0).toLocaleString()}</td>
+          <td class="py-3 px-4">
+            <button onclick="toggleJobFeatured('${job.id}')" class="text-base ${job.isFeatured ? 'text-amber-500' : 'text-gray-300 dark:text-slate-600'}">
+              <i class="fa-solid fa-star"></i>
+            </button>
+          </td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="deleteJob('${job.id}')" class="text-xs text-gray-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      renderStats();
+    }
+
+    function toggleJobFeatured(id) {
+      const j = jobs.find(job => job.id === id);
+      if (j) {
+        j.isFeatured = !j.isFeatured;
+        localStorage.setItem('admin_jobs', JSON.stringify(jobs));
+        renderJobsTable();
+      }
+    }
+
+    function deleteJob(id) {
+      if (confirm("Delete this job listing?")) {
+        jobs = jobs.filter(j => j.id !== id);
+        localStorage.setItem('admin_jobs', JSON.stringify(jobs));
+        renderJobsTable();
+      }
+    }
+
+    function openNewJobModal() {
+      document.getElementById('newJobModal').classList.remove('hidden');
+    }
+    function closeNewJobModal() {
+      document.getElementById('newJobModal').classList.add('hidden');
+    }
+    function handleCreateJob(e) {
+      e.preventDefault();
+      const newJob = {
+        id: `job_${Math.random().toString(36).substring(2, 9)}`,
+        title: document.getElementById('jobTitle').value,
+        companyName: document.getElementById('jobCompany').value,
+        categoryName: document.getElementById('jobCategory').value,
+        location: document.getElementById('jobLocation').value,
+        salaryMin: parseInt(document.getElementById('jobSalaryMin').value) || 120000,
+        salaryMax: parseInt(document.getElementById('jobSalaryMax').value) || 250000,
+        isFeatured: document.getElementById('jobFeatured').checked,
+        employmentType: document.getElementById('jobEmpType').value
+      };
+      jobs.unshift(newJob);
+      localStorage.setItem('admin_jobs', JSON.stringify(jobs));
+      addAuditLog('JOB_CREATED', 'job', newJob.id, '-', 'ACTIVE', `Published ${newJob.title}`);
+      closeNewJobModal();
+      renderJobsTable();
+      alert(`Job vacancy published!`);
+    }
+
+    // --- Payment Settings ---
+    function loadFormSettings() {
+      document.getElementById('cfgBankName').value = paymentSettings.bankName || '';
+      document.getElementById('cfgBranch').value = paymentSettings.branch || '';
+      document.getElementById('cfgBranchCode').value = paymentSettings.branchCode || '';
+      document.getElementById('cfgAccountHolder').value = paymentSettings.accountHolderName || '';
+      document.getElementById('cfgAccountNumber').value = paymentSettings.accountNumber || '';
+      document.getElementById('cfgInstructions').value = paymentSettings.paymentInstructions || '';
+      document.getElementById('cfgNote').value = paymentSettings.paymentNote || '';
+
+      document.getElementById('cfgAppName').value = appSettings.appName || 'LankaJobs';
+      document.getElementById('cfgSupportEmail').value = appSettings.supportEmail || '';
+      document.getElementById('cfgSupportPhone').value = appSettings.supportPhone || '';
+      document.getElementById('cfgAnnouncement').value = appSettings.announcementBanner || '';
+      document.getElementById('cfgMaintenanceMode').checked = !!appSettings.maintenanceMode;
+      document.getElementById('cfgPrivacyUrl').value = appSettings.privacyUrl || '';
+      document.getElementById('cfgTermsUrl').value = appSettings.termsUrl || '';
+
+      document.getElementById('cfgTelegramToken').value = appSettings.telegramBotToken || '';
+      document.getElementById('cfgTelegramChatId').value = appSettings.telegramChatId || '';
+
+      document.getElementById('inputSupabaseUrl').value = localStorage.getItem('supabase_url') || '';
+      document.getElementById('inputSupabaseKey').value = localStorage.getItem('supabase_key') || '';
+    }
+
+    function savePaymentSettings(e) {
+      e.preventDefault();
+      paymentSettings = {
+        bankName: document.getElementById('cfgBankName').value.trim(),
+        branch: document.getElementById('cfgBranch').value.trim(),
+        branchCode: document.getElementById('cfgBranchCode').value.trim(),
+        accountHolderName: document.getElementById('cfgAccountHolder').value.trim(),
+        accountNumber: document.getElementById('cfgAccountNumber').value.trim(),
+        paymentInstructions: document.getElementById('cfgInstructions').value.trim(),
+        paymentNote: document.getElementById('cfgNote').value.trim()
+      };
+      localStorage.setItem('admin_pay_settings', JSON.stringify(paymentSettings));
+
+      if (supabaseClient) {
+        supabaseClient.from('payment_settings').upsert({
+          id: 'default',
+          bank_name: paymentSettings.bankName,
+          branch: paymentSettings.branch,
+          branch_code: paymentSettings.branchCode,
+          account_holder_name: paymentSettings.accountHolderName,
+          account_number: paymentSettings.accountNumber,
+          payment_instructions: paymentSettings.paymentInstructions,
+          payment_note: paymentSettings.paymentNote
+        }).then(() => {});
+      }
+
+      addAuditLog('SETTINGS_UPDATED', 'payment_settings', 'default', '-', 'SAVED', 'Updated official bank account details');
+      alert("Payment bank instructions updated successfully! Changes reflect across the mobile app without APK rebuild.");
+    }
+
+    function saveAppSettings(e) {
+      e.preventDefault();
+      appSettings.appName = document.getElementById('cfgAppName').value.trim();
+      appSettings.supportEmail = document.getElementById('cfgSupportEmail').value.trim();
+      appSettings.supportPhone = document.getElementById('cfgSupportPhone').value.trim();
+      appSettings.announcementBanner = document.getElementById('cfgAnnouncement').value.trim();
+      appSettings.maintenanceMode = document.getElementById('cfgMaintenanceMode').checked;
+      appSettings.privacyUrl = document.getElementById('cfgPrivacyUrl').value.trim();
+      appSettings.termsUrl = document.getElementById('cfgTermsUrl').value.trim();
+
+      localStorage.setItem('admin_app_settings', JSON.stringify(appSettings));
+
+      if (supabaseClient) {
+        supabaseClient.from('app_settings').upsert({
+          id: 'default',
+          app_name: appSettings.appName,
+          support_email: appSettings.supportEmail,
+          support_phone: appSettings.supportPhone,
+          announcement_banner: appSettings.announcementBanner,
+          maintenance_mode: appSettings.maintenanceMode,
+          privacy_url: appSettings.privacyUrl,
+          terms_url: appSettings.termsUrl
+        }).then(() => {});
+      }
+
+      addAuditLog('APP_SETTINGS_UPDATED', 'app_settings', 'default', '-', appSettings.maintenanceMode ? 'MAINTENANCE_ON' : 'OPERATIONAL', 'Remote app settings updated');
+      renderStats();
+      alert("App Remote Configuration saved successfully!");
+    }
+
+    function saveTelegramSettings(e) {
+      e.preventDefault();
+      appSettings.telegramBotToken = document.getElementById('cfgTelegramToken').value.trim();
+      appSettings.telegramChatId = document.getElementById('cfgTelegramChatId').value.trim();
+      localStorage.setItem('admin_app_settings', JSON.stringify(appSettings));
+
+      if (supabaseClient) {
+        supabaseClient.from('app_settings').update({
+          telegram_bot_token: appSettings.telegramBotToken,
+          telegram_chat_id: appSettings.telegramChatId
+        }).eq('id', 'default').then(() => {});
+      }
+
+      addAuditLog('TELEGRAM_UPDATED', 'telegram', 'default', '-', 'CONFIGURED', 'Updated Telegram notification credentials');
+      alert("Telegram notification credentials securely saved!");
+    }
+
+    async function testTelegramAlert() {
+      const token = document.getElementById('cfgTelegramToken').value.trim();
+      const chatId = document.getElementById('cfgTelegramChatId').value.trim();
+      if (!token || !chatId) {
+        alert("Please enter both your Telegram Bot Token and Chat ID.");
+        return;
+      }
+
+      const message = `LANKAJOBS — NEW PAYMENT VERIFICATION REQUEST\n\nAdvertisement: Diploma in Cloud Computing & DevOps\nUser: Saman Jayasinghe\nBusiness: Colombo Tech Academy\nPackage: Professional Banner\nAmount: Rs. 6,000\nReference: SLIP-778901\nDate: 24 Sep 2026\nStatus: PENDING VERIFICATION\n\nAdmin Web: Open dashboard to verify.`;
+
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: message })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          alert("Telegram test alert sent successfully! Check your Telegram inbox.");
+        } else {
+          alert(`Telegram API error: ${data.description}`);
+        }
+      } catch (err) {
+        alert(`Failed to send Telegram alert: ${err.message}`);
+      }
+    }
+
+    function saveSupabaseSettings(e) {
+      e.preventDefault();
+      const url = document.getElementById('inputSupabaseUrl').value.trim();
+      const key = document.getElementById('inputSupabaseKey').value.trim();
+      localStorage.setItem('supabase_url', url);
+      localStorage.setItem('supabase_key', key);
+      initSupabase();
+      alert("Supabase settings saved and synchronization active!");
+    }
+
+    function testSupabaseSync() {
+      syncFromSupabase();
+      alert("Supabase synchronization initiated. Packages, payments, and advertisements refreshed.");
+    }
+
+    // --- Audit Logs ---
+    function renderAuditLogs() {
+      const tbody = document.getElementById('auditLogsTableBody');
+      tbody.innerHTML = '';
+      auditLogs.slice(0, 30).forEach(log => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-gray-100 dark:border-slate-700 text-xs';
+        const dateStr = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + new Date(log.timestamp).toLocaleDateString();
+        tr.innerHTML = `
+          <td class="py-2.5 px-4 font-mono text-gray-500 dark:text-slate-400">${dateStr}</td>
+          <td class="py-2.5 px-4 font-semibold text-gray-800 dark:text-slate-200">${log.admin}</td>
+          <td class="py-2.5 px-4 font-mono font-bold text-brand-600 dark:text-blue-400">${log.action}</td>
+          <td class="py-2.5 px-4 text-gray-700 dark:text-slate-300">${log.entity} (${log.entityId})</td>
+          <td class="py-2.5 px-4"><span class="bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded font-mono">${log.oldStatus} &rarr; ${log.newStatus}</span></td>
+          <td class="py-2.5 px-4 text-gray-600 dark:text-slate-400">${log.reason}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function clearAuditLogs() {
+      if (confirm("Clear local audit logs?")) {
+        auditLogs = [];
+        localStorage.setItem('admin_audit_logs', JSON.stringify(auditLogs));
+        renderAuditLogs();
+      }
+    }
+
+    // Stats updates
+    function renderStats() {
+      const pendingPayCount = payments.filter(p => p.status === 'SUBMITTED').length;
+      const pendingAdCount = advertisements.filter(a => a.status === 'PENDING_APPROVAL').length;
+      const verifiedRev = payments.filter(p => p.status === 'VERIFIED').reduce((sum, p) => sum + (p.amountLkr || 0), 0);
+
+      document.getElementById('statPendingPayments').innerText = pendingPayCount;
+      document.getElementById('statPendingAds').innerText = pendingAdCount;
+      document.getElementById('statRevenue').innerText = `LKR ${verifiedRev.toLocaleString()}`;
+      document.getElementById('statTotalJobs').innerText = jobs.length;
+
+      document.getElementById('pendingPaymentsBadge').innerText = pendingPayCount;
+      document.getElementById('pendingAdsBadge').innerText = pendingAdCount;
+
+      const badge = document.getElementById('dashMaintenanceBadge');
+      if (appSettings.maintenanceMode) {
+        badge.className = 'text-xs px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+        badge.innerText = 'ON (Maintenance Active)';
+      } else {
+        badge.className = 'text-xs px-2 py-0.5 rounded font-bold bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300';
+        badge.innerText = 'OFF (Operational)';
+      }
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">LankaJobs</string>
+    <string name="tagline">Sri Lanka Job Discovery &amp; Verified Advertising</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_search">Search</string>
+    <string name="tab_saved">Saved</string>
+    <string name="tab_profile">Profile</string>
+    <string name="sponsored_label">Sponsored</string>
+    <string name="visit_official_website">Visit Official Website</string>
+    <string name="call_advertiser">Call Inquiries</string>
+    <string name="payment_submitted_title">Payment Submitted for Verification</string>
+    <string name="payment_verified_title">Payment Verified</string>
+    <string name="pending_approval_title">Waiting for Approval</string>
+    <string name="maintenance_title">Platform Under Maintenance</string>
+    <string name="maintenance_desc">LankaJobs is temporarily undergoing scheduled maintenance. Please check back shortly.</string>
+</resources>

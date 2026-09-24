@@ -1,0 +1,6 @@
+{
+  "name": "LankaJobs",
+  "description": "Sri Lankan job discovery and advertisement platform. Verified postings, Google Sign-In authentication, fast search, saved jobs, and profile management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
